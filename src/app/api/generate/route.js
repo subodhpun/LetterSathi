@@ -1,26 +1,25 @@
 // app/api/generate/route.js
-
 export async function POST(request) {
     try {
       const data = await request.json();
   
-      // Validate required fields
       if (!data.fullName || !data.applications?.length) {
         return new Response(
-          JSON.stringify({ error: "Missing required fields: fullName or applications" }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Missing required fields" }),
+          { status: 400 }
         );
       }
   
-      // Generate a cover letter for each application
       const letters = data.applications.map((app) => {
-        const { company, role } = app;
+        const { company, role, hiringManager } = app;
+        const manager = hiringManager || "Hiring Manager"; // ✅ Use per-application hiring manager
   
-        // ✅ Simple template (replace with AI or advanced logic later)
         const coverLetter = `
-  Dear Hiring Team at ${company},
+  Dear ${manager},
   
-  I am writing to express my interest in the ${role} position at ${company}. With my background in software development and passion for creating user-centered applications, I am excited about the opportunity to contribute to your team.
+  I am writing to apply for the position of ${role} at ${company}. With my background in software development and passion for creating user-centered applications, I am excited about the opportunity to contribute to your team.
+  
+  During my 3-month internship, I developed web tools such as a coupon code generator, URL shortener with redirection, WordPress pages, and React.js projects. These experiences strengthened my skills in HTML, CSS, JavaScript, and modern frameworks like React.
   
   In my previous role at [Previous Company], I successfully [mention a key achievement]. I believe this experience aligns well with the goals of ${company} and the requirements of the ${role} role.
   
@@ -45,21 +44,22 @@ export async function POST(request) {
         return {
           company,
           role,
+          hiringManager: manager,
           coverLetter,
           emailSubject,
           emailBody,
+          fullName: data.fullName,
+          email: data.email,
+          phone: data.phone,
+          github: data.github,
+          portfolio: data.portfolio,
+          linkedin: data.linkedin,
         };
       });
   
-      return new Response(
-        JSON.stringify({ letters }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ letters }), { status: 200 });
     } catch (error) {
-      console.error("Error generating letters:", error);
-      return new Response(
-        JSON.stringify({ error: "Internal Server Error" }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
+      console.error("Error:", error);
+      return new Response(JSON.stringify({ error: "Internal Server Error" }), { status: 500 });
     }
   }

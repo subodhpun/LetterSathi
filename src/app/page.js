@@ -12,7 +12,7 @@ export default function Home() {
   const [github, setGithub] = useState("");
   const [portfolio, setPortfolio] = useState("");
   const [linkedin, setLinkedin] = useState("");
-  const [applications, setApplications] = useState([{ company: "", role: "" }]);
+  const [applications, setApplications] = useState([{ company: "", role: "", hiringManager: "" }]);
 
   // Results state
   const [letters, setLetters] = useState([]);
@@ -20,7 +20,7 @@ export default function Home() {
 
   // Helper functions
   const addApplication = () => {
-    setApplications([...applications, { company: "", role: "" }]);
+    setApplications([...applications, { company: "", role: "", hiringManager: "" }]);
   };
 
   const updateApplication = (index, field, value) => {
@@ -89,45 +89,155 @@ export default function Home() {
 
   // Generate and download PDF
   const downloadPDF = async (letter) => {
-    const { company, role, coverLetter } = letter;
-
+    const {
+      fullName,
+      email,
+      phone,
+      github,
+      portfolio,
+      linkedin,
+      hiringManager,
+      coverLetter,
+      company,
+      role
+    } = letter;
+  
+    // Safely handle undefined values
+    const safeFullName = fullName || "Your Name";
+    const safeEmail = email || "";
+    const safePhone = phone || "";
+    const safeGithub = github || "";
+    const safePortfolio = portfolio || "";
+    const safeLinkedin = linkedin || "";
+  
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([600, 800]);
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const titleFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-    const title = `${fullName} - Application for ${role} at ${company}`;
-    const lines = coverLetter.split("\n");
-
+    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  
     let y = 750;
-
-    page.drawText(title, {
+  
+    // Full Name
+    page.drawText(safeFullName, {
+      x: 50,
+      y,
+      size: 24,
+      font: boldFont,
+      color: rgb(0, 0, 0),
+    });
+  
+    // Title
+    y -= 20;
+    page.drawText("Web Developer", {
       x: 50,
       y,
       size: 16,
-      font: titleFont,
-      color: rgb(0, 0, 0),
+      font: boldFont,
+      color: rgb(0, 0.5, 1), // Blue
     });
-
-    y -= 30;
-
-    for (const line of lines) {
-      page.drawText(line, {
+  
+    // Contact Info (no emojis, just plain text)
+    const contactItems = [
+      safePhone ? `Phone: ${safePhone}` : "",
+      safeEmail ? `Email: ${safeEmail}` : "",
+      safeGithub ? `GitHub: ${safeGithub}` : "",
+      safePortfolio ? `Portfolio: ${safePortfolio}` : "",
+      safeLinkedin ? `LinkedIn: ${safeLinkedin}` : "",
+    ].filter(Boolean);
+  
+    y -= 15;
+    contactItems.forEach(item => {
+      page.drawText(item, {
         x: 50,
         y,
         size: 12,
         font,
         color: rgb(0, 0, 0),
       });
-      y -= 20;
-    }
-
+      y -= 15;
+    });
+  
+    // Summary Line
+    y -= 20;
+    page.drawText("SUMMARY", {
+      x: 50,
+      y,
+      size: 14,
+      font: boldFont,
+      color: rgb(0, 0, 0),
+    });
+  
+    // Draw line under summary
+    page.drawLine({
+      start: { x: 50, y: y - 5 },
+      end: { x: 550, y: y - 5 },
+      thickness: 1,
+      color: rgb(0, 0, 0),
+    });
+  
+    // Cover Letter Body
+    y -= 20;
+    const lines = coverLetter.split("\n");
+    lines.forEach(line => {
+      // Wrap long lines manually
+      const words = line.split(" ");
+      let currentLine = "";
+      let currentX = 50;
+  
+      words.forEach(word => {
+        const testLine = currentLine + (currentLine ? " " : "") + word;
+        const width = font.widthOfTextAtSize(testLine, 12);
+  
+        if (width > 500) {
+          page.drawText(currentLine, {
+            x: 50,
+            y,
+            size: 12,
+            font,
+            color: rgb(0, 0, 0),
+          });
+          currentLine = word;
+          y -= 18;
+        } else {
+          currentLine = testLine;
+        }
+      });
+  
+      if (currentLine) {
+        page.drawText(currentLine, {
+          x: 50,
+          y,
+          size: 12,
+          font,
+          color: rgb(0, 0, 0),
+        });
+        y -= 18;
+      }
+    });
+  
+    // Sincerely
+    y -= 20;
+    page.drawText("Sincerely,", {
+      x: 50,
+      y,
+      size: 12,
+      font,
+      color: rgb(0, 0, 0),
+    });
+  
+    y -= 18;
+    page.drawText(safeFullName, {
+      x: 50,
+      y,
+      size: 12,
+      font,
+      color: rgb(0, 0, 0),
+    });
+  
     const pdfBytes = await pdfDoc.save();
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
-    download(blob, `${fullName} - ${role} at ${company}.pdf`);
+    download(blob, `${safeFullName} - Application for ${role}.pdf`);
   };
-
-  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-gray-100">
@@ -314,6 +424,16 @@ export default function Home() {
                           value={app.role}
                           onChange={(e) => updateApplication(index, "role", e.target.value)}
                           placeholder="e.g., Frontend Developer"
+                          className="w-full border border-slate-300 text-black p-3 rounded-lg"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Hiring Manager</label>
+                        <input
+                          type="text"
+                          value={app.hiringManager}
+                          onChange={(e) => updateApplication(index, "hiringManager", e.target.value)}
+                          placeholder="e.g., Jon Doe"
                           className="w-full border border-slate-300 text-black p-3 rounded-lg"
                         />
                       </div>
