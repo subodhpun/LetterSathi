@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import { useState } from "react";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import download from "downloadjs";
@@ -244,9 +244,15 @@ export default function Home() {
       <div className="max-w-5xl mx-auto p-6 md:p-10">
         {/* Header */}
         <header className="text-center mb-12">
-          <h1 className="text-6xl font-extrabold text-slate-800 mb-4 tracking-tight leading-tight">
-            LetterSathi
-          </h1>
+        <Link href="/" onClick={() => setLetters([])}>
+        <h1
+          className="text-6xl md:text-7xl font-extrabold text-gray-900 mb-4 tracking-tight leading-tight cursor-pointer"
+          style={{ background: "linear-gradient(to right, #4F46E5, #3B82F6)", WebkitBackgroundClip: "text", color: "transparent" }}
+        >
+          LetterSathi
+        </h1>
+
+          </Link>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed font-light">
             Craft personalized, professional cover letters and email drafts in seconds — 
             tailored to each role and company you apply to.
