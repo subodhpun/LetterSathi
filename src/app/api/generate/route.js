@@ -1,53 +1,71 @@
 // app/api/generate/route.js
+import { streamText } from "ai";
+import { groq } from "@ai-sdk/groq";
+
+export const runtime = "edge";
+
 export async function POST(request) {
-    try {
-      const data = await request.json();
-  
-      if (!data.fullName || !data.applications?.length) {
-        return new Response(
-          JSON.stringify({ error: "Missing required fields" }),
-          { status: 400 }
-        );
-      }
-  
-      const letters = data.applications.map((app) => {
+  try {
+    const data = await request.json();
+
+    if (!data.fullName || !data.applications?.length) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        { status: 400 }
+      );
+    }
+
+    const letters = await Promise.all(
+      data.applications.map(async (app) => {
         const { company, role, hiringManager } = app;
-        const manager = hiringManager || "Hiring Manager"; // ✅ Use per-application hiring manager
-  
-        const coverLetter = `
-  Dear ${manager},
-  
-  I am writing to apply for the position of ${role} at ${company}. With my background in software development and passion for creating user-centered applications, I am excited about the opportunity to contribute to your team.
-  
-  During my 3-month internship, I developed web tools such as a coupon code generator, URL shortener with redirection, WordPress pages, and React.js projects. These experiences strengthened my skills in HTML, CSS, JavaScript, and modern frameworks like React.
-  
-  In my previous role at [Previous Company], I successfully [mention a key achievement]. I believe this experience aligns well with the goals of ${company} and the requirements of the ${role} role.
-  
-  I would welcome the opportunity to further discuss how my skills and experiences can benefit ${company}. Thank you for considering my application.
-  
-  Sincerely,  
-  ${data.fullName}
-        `.trim();
-  
-        const emailSubject = `Application for ${role} at ${company}`;
-        const emailBody = `
-  Hello ${company} Hiring Team,
-  
-  I'm excited to apply for the ${role} position at ${company}. I've attached my resume and cover letter for your review.
-  
-  Best regards,  
-  ${data.fullName}  
-  ${data.email ? `Email: ${data.email}` : ""}  
-  ${data.phone ? `Phone: ${data.phone}` : ""}
-        `.trim();
-  
+        const manager = hiringManager || "Hiring Manager";
+
+        let coverLetterResult = "";
+
+        try {
+          const { textStream } = await streamText({
+            model: groq("llama3-8b-8192"),
+            prompt: `
+You are ${data.fullName}, applying for the ${role} position at ${company}. Write a concise, professional cover letter with the following:
+
+- Start with: "Dear ${manager},"
+- Express genuine enthusiasm for the role and ${company}
+- Highlight relevant experience: 3-month internship building web tools (coupon generator, URL shortener, WordPress pages, React apps)
+- Emphasize skills: HTML, CSS, JavaScript, React
+- Showcase traits: fast learner, detail-oriented, passionate about frontend development
+- Use two short paragraphs, separated by a single blank line
+- Keep the entire letter under 200 words
+- Close with: "Sincerely," followed by a new line with "${data.fullName}"
+- Do NOT include:
+  - Subject lines
+  - "Here is the cover letter:" or any meta comments
+  - Contact info, resume mentions, or attachments
+
+Match ${company}'s tone (professional, innovative, or mission-driven).`,
+          });
+
+          for await (const chunk of textStream) {
+            coverLetterResult += chunk;
+          }
+        } catch (err) {
+          console.error("Error generating letter:", err);
+          coverLetterResult = `Error: ${err.message || "Failed to generate cover letter."}`;
+        }
+
         return {
           company,
           role,
           hiringManager: manager,
-          coverLetter,
-          emailSubject,
-          emailBody,
+          coverLetter: coverLetterResult.trim(),
+          emailSubject: `Application for ${role} at ${company}`,
+          emailBody: `Hello ${company} Hiring Team,
+
+I'm excited to apply for the ${role} position at ${company}. I've attached my resume and cover letter for your review.
+
+Best regards,
+${data.fullName}
+${data.email ? `Email: ${data.email}` : ""}
+${data.phone ? `Phone: ${data.phone}` : ""}`.trim(),
           fullName: data.fullName,
           email: data.email,
           phone: data.phone,
@@ -55,11 +73,15 @@ export async function POST(request) {
           portfolio: data.portfolio,
           linkedin: data.linkedin,
         };
-      });
-  
-      return new Response(JSON.stringify({ letters }), { status: 200 });
-    } catch (error) {
-      console.error("Error:", error);
-      return new Response(JSON.stringify({ error: "Internal Server Error" }), { status: 500 });
-    }
+      })
+    );
+
+    return new Response(JSON.stringify({ letters }), { status: 200 });
+  } catch (error) {
+    console.error("Error:", error);
+    return new Response(
+      JSON.stringify({ error: "Internal Server Error" }),
+      { status: 500 }
+    );
   }
+}
