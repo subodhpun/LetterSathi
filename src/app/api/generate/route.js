@@ -35,7 +35,6 @@ You are ${data.fullName}, applying for the ${role} position at ${company}. Write
 - Showcase traits: fast learner, detail-oriented, passionate about frontend development
 - Use two short paragraphs, separated by a single blank line
 - Keep the entire letter under 200 words
-- Close with: "Sincerely," followed by a new line with "${data.fullName}"
 - Do NOT include:
   - Subject lines
   - "Here is the cover letter:" or any meta comments
